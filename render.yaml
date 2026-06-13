@@ -1,0 +1,67 @@
+# Render Blueprint configuration for SKM Workshop System
+# To deploy: Go to Render Dashboard -> Blueprints -> New Blueprint Instance
+# Connect your repository and Render will automatically create the services below.
+
+services:
+  # 1. Web Service (Backend + Frontend Monolith)
+  - type: web
+    name: skm-workshop-web
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free # Change to 'starter' if you want to use a persistent disk
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: 8080
+
+      # JWT Config (Render will automatically generate secure random keys)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+
+      # MySQL Connection URL
+      # If you use the self-hosted MySQL service below, set it to:
+      # mysql://root:root_db_password_here@skm-workshop-db:3306/skm_taller
+      # Otherwise, paste your external MySQL database URL (e.g. Aiven, Railway, AWS, etc.)
+      - key: DATABASE_URL
+        value: mysql://root:root_db_password_here@skm-workshop-db:3306/skm_taller
+
+      # Frontend / App URL configuration (Render uses the service's own URL)
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: skm-workshop-web
+          property: host
+      - key: APP_URL
+        fromService:
+          type: web
+          name: skm-workshop-web
+          property: host
+
+    # OPTIONAL: Persistent storage for uploads (Requires upgrade from Render 'free' to 'starter' plan)
+    # If using the free plan, uploads are ephemeral and will be lost on container restarts.
+    # disk:
+    #   name: skm-uploads-storage
+    #   mountPath: /app/backend/uploads
+    #   sizeGB: 5
+
+  # 2. Self-Hosted MySQL Database (Optional - runs inside Render as a private service)
+  - type: private
+    name: skm-workshop-db
+    env: docker
+    dockerImage: mysql:8
+    plan: free # Change to 'starter' if you want to use a persistent disk for your DB
+    envVars:
+      - key: MYSQL_ROOT_PASSWORD
+        value: root_db_password_here
+      - key: MYSQL_DATABASE
+        value: skm_taller
+    # OPTIONAL: Persistent storage for database (Requires 'starter' plan)
+    # Without a disk on the database service, DB data will be lost when the service restarts.
+    # disk:
+    #   name: skm-mysql-storage
+    #   mountPath: /var/lib/mysql
+    #   sizeGB: 10

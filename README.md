@@ -94,18 +94,51 @@ El sistema utiliza un esquema de permisos basado en roles (RBAC):
   - `/src/hooks`: Logica de React compartida.
   - `/src/store`: Gestion de estado con Zustand.
 
-## Despliegue con Docker
+## Despliegue con Docker y Render
 
-El proyecto incluye un archivo Dockerfile optimizado para despliegues en produccion (como Railway o servicios similares) utilizando builds de multiples etapas para reducir el tamaño de la imagen final.
+El proyecto incluye un archivo Dockerfile optimizado para despliegues en producción utilizando builds de múltiples etapas para reducir el tamaño de la imagen final.
 
-Para construir y ejecutar localmente con Docker:
+### Despliegue en Render (Recomendado)
+
+El proyecto incluye soporte nativo para **Render** mediante el archivo `render.yaml` (Render Blueprints). 
+
+#### Método 1: Usando el Blueprint (Un solo clic)
+1. Sube tu código a un repositorio de GitHub o GitLab.
+2. En tu panel de Render, haz clic en **New** -> **Blueprint**.
+3. Selecciona tu repositorio.
+4. Render leerá el archivo `render.yaml` y creará automáticamente los servicios necesarios:
+   - **skm-workshop-web**: Tu servicio web principal (Backend + Frontend integrado).
+   - **skm-workshop-db**: Base de datos MySQL privada hospedada dentro de Render.
+5. Los secretos (`JWT_SECRET`, `JWT_REFRESH_SECRET`) se generarán automáticamente.
+
+#### Método 2: Despliegue Manual en Render (Web Service)
+Si prefieres configurar el servicio web manualmente sin el Blueprint:
+1. Crea un nuevo **Web Service** en Render y selecciona tu repositorio.
+2. Selecciona **Docker** como el Runtime (Render detectará automáticamente el `Dockerfile`).
+3. Agrega las siguientes Variables de Entorno en la sección **Environment**:
+   - `NODE_ENV`: `production`
+   - `PORT`: `8080` (o el que prefieras, Render lo mapeará automáticamente)
+   - `DATABASE_URL`: Tu cadena de conexión MySQL (e.g. `mysql://user:pass@host:port/database`).
+   - `JWT_SECRET`: Una cadena aleatoria segura.
+   - `JWT_REFRESH_SECRET`: Otra cadena aleatoria segura.
+   - `FRONTEND_URL`: La URL pública que te dé Render (ej. `https://skm-workshop-web.onrender.com`).
+   - `APP_URL`: La misma URL pública de Render.
+
+> [!IMPORTANT]
+> **Persistencia de Archivos y Fotos:**
+> Por defecto en el plan **Free** de Render, los archivos del contenedor son efímeros y se borrarán al reiniciar o redesplegar el servicio.
+> Para producción, se recomienda:
+> 1. Añadir un **Persistent Disk** (disponible a partir del plan **Starter**) montado en la ruta `/app/backend/uploads` para conservar fotos y firmas.
+> 2. O configurar un servicio de almacenamiento en la nube (como AWS S3 o Cloudinary) para subir los archivos de forma remota.
+
+### Construir y Ejecutar Localmente con Docker:
 ```bash
 docker build -t skm-system .
-docker run -p 8080:8080 skm-system
+docker run -p 8080:8080 -e DATABASE_URL="mysql://usuario:password@host:3306/db" skm-system
 ```
 
 ## Notas Adicionales
 
-- El sistema utiliza un puerto por defecto de 5000 para el backend y 5173 para el frontend (Vite).
-- Los logs del sistema en produccion se envian directamente a la salida estandar (stdout/stderr) para cumplimiento con los estandares de contenedores.
-- La carga de archivos (fotos y firmas) se gestiona en el directorio /uploads del backend.
+- El sistema utiliza un puerto por defecto de 5000 para el backend y 5173 para el frontend (Vite) en desarrollo. En producción con Docker/Render se unifica en el puerto `8080`.
+- Los logs del sistema en producción se envían directamente a la salida estándar (stdout/stderr) para cumplimiento con los estándares de contenedores.
+- La carga de archivos (fotos y firmas) se gestiona en el directorio `/app/backend/uploads` del contenedor.

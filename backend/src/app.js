@@ -42,10 +42,11 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
-// CORS: allow Railway domain + localhost for development
+// CORS: allow Railway domain, Render domain + localhost for development
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null,
+  process.env.RENDER_EXTERNAL_URL,
   'http://localhost:5173',
   'http://localhost:5174',
 ].filter(Boolean);

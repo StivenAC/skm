@@ -43,6 +43,7 @@ backend/schema.sql
 .vscode/
 .idea/
 
-# Railway config (not needed inside container)
+# Deploy configs (not needed inside container)
 railway.json
+render.yaml
 ecosystem.config.js

@@ -397,7 +397,7 @@ export default function ServiceDetail() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {service.photos?.map(photo => (
                   <div key={photo.id} className="group relative aspect-square rounded-xl overflow-hidden bg-dark-700 border border-dark-600">
-                    <img src={`${import.meta.env.VITE_API_URL.replace('/api/v1', '')}${photo.url}`} alt="Service" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <img src={`${(import.meta.env.VITE_API_URL || '').replace('/api/v1', '')}${photo.url}`} alt="Service" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <p className="text-xs text-white font-medium">{format(new Date(photo.createdAt), 'dd/MM/yyyy')}</p>
                     </div>
