@@ -17,7 +17,7 @@ uploadDirs.forEach(dir => {
 
 async function start() {
   try {
-    // 1. Run Migrations (Inside the process to manage memory better)
+    // 1. Run Migrations & Seeding (Inside the process to manage memory better)
     if (process.env.NODE_ENV === 'production') {
       logger.info('Running database migrations...');
       try {
@@ -26,8 +26,13 @@ async function start() {
         const backendPath = path.join(__dirname, '..');
         execSync(`node ${prismaCliPath} migrate deploy`, { cwd: backendPath, stdio: 'inherit' });
         logger.info('Migrations completed');
+
+        // Run seed script automatically to ensure default users are created
+        logger.info('Running database seed...');
+        execSync(`node prisma/seed.js`, { cwd: backendPath, stdio: 'inherit' });
+        logger.info('Database seed completed');
       } catch (migrationError) {
-        logger.error('Migration failed, but attempting to start anyway:', migrationError.message);
+        logger.error('Migration or Seeding failed, but attempting to start anyway:', migrationError.message);
       }
     }
 
