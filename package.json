@@ -1,0 +1,22 @@
+{
+  "name": "skm-workshop-management",
+  "version": "1.0.0",
+  "description": "Sistema de Gestión de Taller Mecánico de Motos",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "start": "npm run deploy:migrate && node backend/src/server.js",
+    "build": "npm install --prefix backend && cd backend && npx prisma generate && cd .. && npm install --prefix frontend && npm run build --prefix frontend",
+    "postinstall": "cd backend && npx prisma generate",
+    "deploy:migrate": "cd backend && npx prisma migrate deploy",
+    "db:seed": "node backend/prisma/seed.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  }
+}

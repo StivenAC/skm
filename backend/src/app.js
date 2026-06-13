@@ -1,0 +1,135 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const cookieParser = require('cookie-parser');
+const morgan = require('morgan');
+const path = require('path');
+
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler.middleware');
+const { generalLimiter } = require('./middleware/rateLimiter.middleware');
+const logger = require('./utils/logger.utils');
+
+// Routes
+const authRoutes = require('./modules/auth/auth.routes');
+const usersRoutes = require('./modules/users/users.routes');
+const clientsRoutes = require('./modules/clients/clients.routes');
+const motorcyclesRoutes = require('./modules/motorcycles/motorcycles.routes');
+const servicesRoutes = require('./modules/services/services.routes');
+const checklistsRoutes = require('./modules/checklists/checklists.routes');
+const inventoryRoutes = require('./modules/inventory/inventory.routes');
+const suppliersRoutes = require('./modules/suppliers/suppliers.routes');
+const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const reportsRoutes = require('./modules/reports/reports.routes');
+const auditRoutes = require('./modules/audit/audit.routes');
+const notificationsRoutes = require('./modules/notifications/notifications.routes');
+
+const app = express();
+
+// ─── Basic Request Logging ──────────────────────────────────────────────────
+app.use((req, res, next) => {
+  if (req.path !== '/health') {
+    logger.info(`[${req.method}] ${req.path} - ${req.ip}`);
+  }
+  next();
+});
+
+// ─── Security Middleware ────────────────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  // Disable CSP in production - SPA served from same origin handles its own security
+  contentSecurityPolicy: false,
+}));
+
+// CORS: allow Railway domain + localhost for development
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null,
+  'http://localhost:5173',
+  'http://localhost:5174',
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (health checks, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) return callback(null, true);
+    // In production monolith, same-origin requests have no CORS issues
+    if (process.env.NODE_ENV === 'production') return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
+
+// ─── General Middleware ─────────────────────────────────────────────────────
+app.use(compression());
+app.use(cookieParser());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// HTTP logging
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined', {
+    stream: { write: (msg) => logger.http(msg.trim()) },
+  }));
+}
+
+// Static uploads
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
+// Rate limiting
+app.use('/api/', generalLimiter);
+
+// ─── API Routes ─────────────────────────────────────────────────────────────
+const API = '/api/v1';
+
+app.use(`${API}/auth`, authRoutes);
+app.use(`${API}/users`, usersRoutes);
+app.use(`${API}/clients`, clientsRoutes);
+app.use(`${API}/motorcycles`, motorcyclesRoutes);
+app.use(`${API}/services`, servicesRoutes);
+app.use(`${API}/checklists`, checklistsRoutes);
+app.use(`${API}/inventory`, inventoryRoutes);
+app.use(`${API}/suppliers`, suppliersRoutes);
+app.use(`${API}/dashboard`, dashboardRoutes);
+app.use(`${API}/reports`, reportsRoutes);
+app.use(`${API}/audit`, auditRoutes);
+app.use(`${API}/notifications`, notificationsRoutes);
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString(), version: '1.0.0' });
+});
+
+// ─── Frontend Static Files (Production) ───────────────────────────────────
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../../frontend/dist');
+  const indexPath = path.join(distPath, 'index.html');
+  const fs = require('fs');
+  
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    
+    // All other routes redirect to index.html for SPA support
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) return next();
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          logger.error('Failed to serve index.html:', err.message);
+          next(err);
+        }
+      });
+    });
+  } else {
+    logger.warn('Frontend dist directory not found at:', distPath);
+  }
+}
+
+// ─── Error Handling ─────────────────────────────────────────────────────────
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+module.exports = app;
