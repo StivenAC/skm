@@ -21,9 +21,10 @@ async function start() {
     if (process.env.NODE_ENV === 'production') {
       logger.info('Running database migrations...');
       try {
-        // We use the prisma binary from node_modules
-        const prismaPath = path.join(__dirname, '../node_modules/.bin/prisma');
-        execSync(`${prismaPath} migrate deploy`, { stdio: 'inherit' });
+        // Run migrations inside the backend directory directly using the Prisma CLI JS build
+        const prismaCliPath = path.join(__dirname, '../node_modules/prisma/build/index.js');
+        const backendPath = path.join(__dirname, '..');
+        execSync(`node ${prismaCliPath} migrate deploy`, { cwd: backendPath, stdio: 'inherit' });
         logger.info('Migrations completed');
       } catch (migrationError) {
         logger.error('Migration failed, but attempting to start anyway:', migrationError.message);
